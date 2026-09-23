@@ -1,0 +1,162 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f7f9;
+  color: #1f2933;
+  font-family: Arial, sans-serif;
+  line-height: 1.4;
+}
+
+main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header,
+section {
+  background: #fff;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  padding: 16px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  font-weight: 700;
+  margin: 12px 0;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #bcc5d1;
+  border-radius: 4px;
+  font: inherit;
+  font-weight: 400;
+  margin-top: 4px;
+  padding: 8px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  background: #1f6feb;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+button:disabled {
+  background: #9aa6b2;
+  cursor: not-allowed;
+}
+
+button.danger {
+  background: #b42318;
+}
+
+pre {
+  background: #111827;
+  border-radius: 4px;
+  color: #e5e7eb;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+.grid,
+.match-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display: none;
+}
+
+.notice {
+  background: #eef4ff;
+  border-left: 4px solid #1f6feb;
+  margin: 8px 0;
+  padding: 8px;
+}
+
+.warning {
+  background: #fff4e5;
+  border-left: 4px solid #f59e0b;
+  margin: 12px 0;
+  padding: 10px;
+}
+
+.success {
+  background: #ecfdf3;
+  border-left: 4px solid #16a34a;
+  margin: 12px 0;
+  padding: 10px;
+}
+
+.error {
+  background: #fef3f2;
+  border-left: 4px solid #d92d20;
+  margin: 12px 0;
+  padding: 10px;
+}
+
+.pill-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.pill.match {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pill.gap {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.history-item {
+  align-items: center;
+  border: 1px solid #d8dee6;
+  border-radius: 4px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin: 8px 0;
+  padding: 8px;
+}
+
