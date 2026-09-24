@@ -1,135 +1,123 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MailVeyra</title>
-    <link rel="stylesheet" href="/static/styles.css">
-  </head>
-  <body>
-    <section id="login-screen" class="login-screen">
-      <div class="login-card">
-        <div class="brand-mark">MV</div>
-        <h1>MailVeyra</h1>
-        <p>Generate truthful job application emails and send them from your Gmail after approval.</p>
-        <a class="primary-button wide" href="/auth/google/login">Continue with Gmail</a>
-        <p class="small-text">You must sign in before using profile, chat, draft, or send features.</p>
-      </div>
-    </section>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MailVeyra</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="boot" class="center"><p id="boot-text">Checking session…</p><button id="boot-retry" class="hidden">Retry</button></div>
 
-    <main id="workspace" class="workspace hidden">
-      <header class="topbar">
-        <div>
-          <div class="logo-line">
-            <span class="brand-dot">MV</span>
-            <strong>MailVeyra</strong>
-          </div>
-          <p id="account-status">Checking login...</p>
+<section id="login" class="center hidden">
+  <div class="card login-card">
+    <div class="mark">MV</div>
+    <h1>MailVeyra</h1>
+    <p>Job application emails drafted from your real profile and sent from your Gmail, only after you approve.</p>
+    <a class="btn primary wide" href="/auth/google/login">Continue with Google</a>
+    <p class="muted small">This lets MailVeyra send email on your behalf. Nothing is sent without your approval.</p>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+  <header class="topbar">
+    <button id="menu" class="icon" aria-label="Menu">☰</button>
+    <strong>MailVeyra</strong>
+    <span class="spacer"></span>
+    <span id="gmail-chip" class="chip"></span>
+    <span id="account" class="muted small"></span>
+    <button id="theme" class="ghost">Light</button>
+    <button id="logout" class="ghost">Log out</button>
+  </header>
+
+  <div id="tabs" class="tabs hidden"><button data-tab="chat" class="on">Chat</button><button data-tab="draft">Draft</button></div>
+
+  <div id="body" class="body" data-tab="chat">
+    <aside id="side" class="side">
+      <button id="new-app" class="btn primary wide">+ New application</button>
+      <h3>Profile</h3>
+      <div id="profile-line" class="muted small">Not set up</div>
+      <button id="open-profile" class="btn wide">Edit profile</button>
+      <h3>Resume</h3>
+      <div id="resume-line" class="muted small">No resume uploaded</div>
+      <label class="btn wide filebtn">Upload resume<input id="resume-file" type="file" accept=".pdf,.txt,.md" hidden></label>
+      <h3>History</h3>
+      <div id="history" class="history"></div>
+    </aside>
+
+    <main class="chat">
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="chat-form" class="composer">
+        <div id="mode" class="mode"></div>
+        <div id="chips" class="chips hidden">
+          <button type="button" data-q="Make it shorter">Shorter</button>
+          <button type="button" data-q="Make it more confident">More confident</button>
+          <button type="button" data-q="Make it more formal">More formal</button>
         </div>
-        <div class="top-actions">
-          <button id="theme-toggle" type="button">Light</button>
-          <button id="logout" type="button">Logout</button>
+        <textarea id="chat-input" rows="3" placeholder="Paste a job description…"></textarea>
+        <div class="row">
+          <label class="btn filebtn">Attach<input id="chat-files" type="file" multiple hidden accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp"></label>
+          <span id="file-names" class="muted small grow"></span>
+          <button id="cancel" type="button" class="btn hidden">Cancel</button>
+          <button id="chat-submit" class="btn primary" type="submit">Generate draft</button>
         </div>
-      </header>
-
-      <section class="layout">
-        <aside class="left-rail">
-          <section class="card">
-            <div class="section-title">
-              <h2>Profile</h2>
-              <span>saved once, editable anytime</span>
-            </div>
-            <form id="profile-form">
-              <div class="two-col">
-                <label>Name* <input id="profile-name" required></label>
-                <label>Email <input id="profile-email" type="email"></label>
-                <label>Phone <input id="profile-phone"></label>
-                <label>Location <input id="profile-location"></label>
-              </div>
-              <label>Headline <input id="profile-headline"></label>
-              <label>Summary <textarea id="profile-summary" rows="3"></textarea></label>
-              <label>Skills <input id="profile-skills" placeholder="python, django, fastapi, aws"></label>
-              <details>
-                <summary>Experience / projects / education JSON</summary>
-                <label>Experience <textarea id="profile-experience" rows="4">[]</textarea></label>
-                <label>Projects <textarea id="profile-projects" rows="4">[]</textarea></label>
-                <label>Education <textarea id="profile-education" rows="3">[]</textarea></label>
-              </details>
-              <label>Resume text <textarea id="profile-resume" rows="4"></textarea></label>
-              <button class="primary-button" type="submit">Save Profile</button>
-            </form>
-          </section>
-
-          <section class="card">
-            <div class="section-title">
-              <h2>Resume</h2>
-              <span>attached to approved email</span>
-            </div>
-            <form id="resume-form">
-              <input id="resume-file" type="file" accept=".pdf,.txt,.md">
-              <button type="submit">Upload Resume</button>
-            </form>
-            <div id="resume-status" class="helper-text">No resume uploaded yet.</div>
-          </section>
-
-          <section class="card">
-            <div class="section-title">
-              <h2>History</h2>
-              <span>recent applications</span>
-            </div>
-            <div id="history-list" class="history-list"></div>
-          </section>
-        </aside>
-
-        <section class="center-pane">
-          <div id="messages" class="messages"></div>
-          <form id="chat-form" class="composer">
-            <textarea id="chat-input" rows="3" placeholder="Paste a job description, or ask: make the draft shorter / more confident / add Django experience."></textarea>
-            <div class="composer-footer">
-              <input id="chat-files" type="file" multiple accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp">
-              <div class="composer-actions">
-                <button id="confirm-zero-overlap" class="danger-button hidden" type="button">Generate Anyway</button>
-                <button class="primary-button" id="chat-submit" type="submit">Send</button>
-              </div>
-            </div>
-          </form>
-        </section>
-
-        <aside class="right-rail">
-          <section id="draft-panel" class="gmail-draft">
-            <div class="draft-titlebar">
-              <span>New Message</span>
-              <span id="draft-state">No draft</span>
-            </div>
-            <div class="draft-row">
-              <span>To</span>
-              <input id="draft-recipient" type="email" placeholder="recipient@example.com">
-            </div>
-            <div class="draft-row">
-              <span>Cc</span>
-              <input id="draft-cc" placeholder="optional, comma separated">
-            </div>
-            <div class="draft-row">
-              <span>Bcc</span>
-              <input id="draft-bcc" placeholder="optional, comma separated">
-            </div>
-            <input id="draft-subject" class="subject-input" placeholder="Subject">
-            <textarea id="draft-body" class="body-input" rows="14" placeholder="Generated email draft appears here."></textarea>
-            <div id="draft-attachments" class="attachment-line">Attachments: none</div>
-            <details class="evidence-block">
-              <summary>Claim evidence</summary>
-              <pre id="claim-evidence">{}</pre>
-            </details>
-            <div class="draft-actions">
-              <button id="save-draft" type="button" disabled>Save</button>
-              <button id="approve-draft" type="button" disabled>Approve</button>
-              <button id="send-draft" class="primary-button" type="button" disabled>Send</button>
-            </div>
-          </section>
-        </aside>
-      </section>
+      </form>
     </main>
 
-    <script src="/static/app.js"></script>
-  </body>
+    <aside id="draft-pane" class="draft hidden">
+      <div class="dhead"><span>New message</span><span id="d-state" class="chip"></span></div>
+      <div class="steps"><span id="s1">Edit</span><span id="s2">Approve</span><span id="s3">Send</span></div>
+      <div id="d-banner" class="banner hidden"></div>
+      <div class="drow"><label for="d-to">To<b class="req">*</b></label><input id="d-to" type="email"><span class="links"><a href="#" id="show-cc">Cc</a> <a href="#" id="show-bcc">Bcc</a></span></div>
+      <div id="row-cc" class="drow hidden"><label for="d-cc">Cc</label><input id="d-cc"></div>
+      <div id="row-bcc" class="drow hidden"><label for="d-bcc">Bcc</label><input id="d-bcc"></div>
+      <div class="drow"><label for="d-subject">Subject<b class="req">*</b></label><input id="d-subject"></div>
+      <textarea id="d-body" aria-label="Body (required)" placeholder="Body*"></textarea>
+      <div id="d-attach" class="muted small pad"></div>
+      <div id="d-check" class="small pad"></div>
+      <details class="pad"><summary>Why these claims hold</summary><div id="d-evidence" class="small"></div></details>
+      <div class="dfoot">
+        <span id="d-dirty" class="muted small grow"></span>
+        <button id="d-save" class="btn">Save</button>
+        <button id="d-approve" class="btn primary">Approve</button>
+        <button id="d-send" class="btn primary">Send email</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<dialog id="profile-dlg">
+  <form id="profile-form" method="dialog">
+    <h2>Your profile</h2>
+    <p class="muted small">Drafts only claim what is written here and in your resume. Add at least your name and one skill.</p>
+    <div class="grid2">
+      <label>Name*<input id="p-name" required></label>
+      <label>Email<input id="p-email" type="email"></label>
+      <label>Phone<input id="p-phone"></label>
+      <label>Location<input id="p-location"></label>
+    </div>
+    <label>Headline<input id="p-headline"></label>
+    <label>Skills* (comma separated)<input id="p-skills" placeholder="python, django, fastapi"></label>
+    <label>Summary<textarea id="p-summary" rows="3"></textarea></label>
+    <details><summary>Experience, projects, education (JSON)</summary>
+      <label>Experience<textarea id="p-experience" rows="4">[]</textarea></label>
+      <label>Projects<textarea id="p-projects" rows="4">[]</textarea></label>
+      <label>Education<textarea id="p-education" rows="3">[]</textarea></label>
+    </details>
+    <label>Resume text<textarea id="p-resume" rows="4"></textarea></label>
+    <div id="p-error" class="error small"></div>
+    <div class="row end"><button type="button" id="p-cancel" class="btn">Cancel</button><button type="submit" id="p-save" class="btn primary">Save profile</button></div>
+  </form>
+</dialog>
+
+<dialog id="send-dlg">
+  <h2>Send this email?</h2>
+  <dl id="send-summary"></dl>
+  <p class="muted small">This sends from your Gmail account and cannot be undone.</p>
+  <div class="row end"><button id="send-no" class="btn">Cancel</button><button id="send-yes" class="btn primary">Send email</button></div>
+</dialog>
+
+<div id="toasts" class="toasts"></div>
+<script src="/static/app.js"></script>
+</body>
 </html>

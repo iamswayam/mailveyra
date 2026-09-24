@@ -1,10 +1,28 @@
-# MailVeyra
+<div align="center">
+  <h1>MailVeyra</h1>
+  <p><strong>AI Gmail assistant for truthful, evidence-backed job application emails.</strong></p>
+  <p>
+    <a href="#features">Features</a>
+    ·
+    <a href="#setup">Setup</a>
+    ·
+    <a href="#workflow">Workflow</a>
+    ·
+    <a href="#safety-rules">Safety</a>
+  </p>
+  <p>
+    <img alt="Python" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white">
+    <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white">
+    <img alt="Gemini" src="https://img.shields.io/badge/Gemini-AI-6F42C1?style=for-the-badge">
+    <img alt="Gmail" src="https://img.shields.io/badge/Gmail-Send-EA4335?style=for-the-badge&logo=gmail&logoColor=white">
+  </p>
+</div>
 
-MailVeyra is an AI Gmail assistant for truthful job application emails.
+---
 
-It lets a user log in with Gmail, save a profile/resume, paste or attach a job description, generate a draft, revise it in chat, approve it, and send it from the logged-in Gmail account.
+## Overview
 
-## Workflow
+MailVeyra helps a user create a personalized job application email from a candidate profile, resume, and job description. It drafts the email with Gemini, keeps candidate claims grounded in stored profile/resume evidence, requires human approval, then sends from the logged-in Gmail account.
 
 ```text
 Gmail login -> profile/resume -> chat with JD -> draft -> revise -> approve -> send with Gmail
@@ -12,53 +30,71 @@ Gmail login -> profile/resume -> chat with JD -> draft -> revise -> approve -> s
 
 ## Features
 
-- Google OAuth login
-- Send email from the logged-in Gmail account
-- Gemini model fallback:
-  - `gemini-3.1-flash-lite`
-  - `gemini-2.5-flash-lite`
-  - `gemini-3-flash-preview`
-- Candidate profile with name, email, phone, location, summary, skills, experience, projects, education
-- Resume upload and attachment support
-- Job description input by text, PDF/text file, or image
-- Chat-based draft creation and revision
-- Gmail-style draft UI:
-  - `To*`
-  - `Cc/Bcc`
-  - `Subject*`
-  - `Body*`
-  - attachments
-- Approval required before send
-- Approved drafts are frozen
-- Duplicate successful sends are blocked
-- Send logs are stored
-- Dark UI with optional light mode
+| Area | What MailVeyra does |
+| --- | --- |
+| Gmail auth | Google OAuth login and Gmail API sending |
+| AI drafting | Gemini model fallback for extraction, drafting, and revision |
+| Candidate profile | Name, email, phone, location, summary, skills, experience, projects, education |
+| Resume | Upload resume and attach it to approved emails |
+| Job input | Paste text or upload PDF/text/image job descriptions |
+| Chat workflow | Generate a draft, then ask for revisions in chat |
+| Draft UI | Gmail-style compose panel with To, Cc, Bcc, Subject, Body, and Attachments |
+| Approval | Approved drafts are frozen before sending |
+| Safety | Duplicate sends are blocked and send logs are stored |
+
+## UI Flow
+
+```text
+Logged out
+  -> Gmail login
+  -> Profile setup
+  -> Resume upload
+  -> Chat with job description
+  -> Review generated draft
+  -> Revise if needed
+  -> Approve
+  -> Confirm send
+  -> Gmail send result
+```
 
 ## Safety Rules
 
-- The app must not claim candidate skills or experience that are not in the profile/resume.
-- Skill matching remains deterministic and binary:
+- The app must not claim candidate skills or experience that are not in the profile or resume.
+- Skill matching is deterministic and binary:
   - `matched_skills`
   - `gap_skills`
 - Zero skill overlap blocks draft generation until the user explicitly confirms.
-- Real Gmail sending requires login and approval.
+- Gmail sending requires login, required draft fields, and approval.
 - `To`, `Subject`, and `Body` are required before approval/send.
+- Approved drafts are frozen.
+- Duplicate successful sends are blocked.
+
+## Gemini Fallback
+
+MailVeyra tries Gemini models in this order:
+
+```text
+gemini-3.1-flash-lite
+gemini-2.5-flash-lite
+gemini-3-flash-preview
+```
+
+If a model fails or returns invalid structured output, the backend falls back to the next model.
 
 ## Tech Stack
 
-- Python
-- FastAPI
-- SQLAlchemy
-- SQLite for local development
-- Pydantic
-- Gemini API
-- Gmail API
-- Plain HTML/CSS/JavaScript frontend
-- Pytest
+| Layer | Stack |
+| --- | --- |
+| Backend | FastAPI, SQLAlchemy, Pydantic |
+| Database | SQLite for local development |
+| AI | Gemini API |
+| Email | Gmail API |
+| Frontend | Plain HTML, CSS, JavaScript |
+| Tests | Pytest |
 
 ## Setup
 
-Use the project virtual environment.
+Use the project virtual environment only.
 
 ```powershell
 cd D:\Projects\Email-agent
@@ -78,6 +114,12 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 APP_SECRET_KEY=your_random_secret
 ```
 
+Generate `APP_SECRET_KEY`:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
 Google OAuth redirect URI:
 
 ```text
@@ -88,12 +130,6 @@ Required Gmail scope:
 
 ```text
 https://www.googleapis.com/auth/gmail.send
-```
-
-Generate an app secret:
-
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ## Run
@@ -124,7 +160,7 @@ cd D:\Projects\Email-agent
 python -m pytest
 ```
 
-Tests use the local fallback client and do not call Gemini.
+Tests use the local fallback client and do not call Gemini or Gmail.
 
 ## Local Data
 
@@ -140,5 +176,5 @@ Ignored local files:
 - SQLite is used for local development.
 - OAuth tokens are stored locally in SQLite for development.
 - Gmail send is implemented for local single-user use, not production multi-user deployment.
+- History can show send logs, but reopening historical drafts needs more backend work.
 - No hosted deployment configuration yet.
-

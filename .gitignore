@@ -8,4 +8,4 @@ email_agent.db
 mailveyra.db
 .env
 data/uploads/
-
+app/static/latest/
