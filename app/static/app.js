@@ -1,27 +1,34 @@
 const state = {
+  me: null,
   profile: null,
-  job: null,
   application: null,
   draft: null,
-  sent: false,
+  zeroOverlapPending: false,
 };
 
 const $ = (id) => document.getElementById(id);
 
-function showMessage(title, payload, type = "info") {
-  $("messages").textContent = `${title}\n${JSON.stringify(payload, null, 2)}`;
-  $("messages").className = type;
+function addMessage(text, kind = "app", payload = null) {
+  const message = document.createElement("div");
+  message.className = `message ${kind}`;
+  const body = document.createElement("div");
+  body.textContent = text;
+  message.appendChild(body);
+  if (payload) {
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(payload, null, 2);
+    message.appendChild(pre);
+  }
+  $("messages").appendChild(message);
+  $("messages").scrollTop = $("messages").scrollHeight;
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
-  });
+  const response = await fetch(path, options);
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
   if (!response.ok) {
-    showMessage(`HTTP ${response.status}`, data, "error");
+    addMessage(`HTTP ${response.status}`, "error", data);
     throw data;
   }
   return data;
@@ -37,9 +44,19 @@ function parseJsonField(id) {
   return parsed;
 }
 
+function splitEmails(value) {
+  return value
+    .split(",")
+    .map((email) => email.trim())
+    .filter(Boolean);
+}
+
 function profilePayload() {
   return {
     name: $("profile-name").value.trim(),
+    email: $("profile-email").value.trim() || null,
+    phone: $("profile-phone").value.trim() || null,
+    location: $("profile-location").value.trim() || null,
     headline: $("profile-headline").value.trim() || null,
     summary: $("profile-summary").value.trim() || null,
     skills: $("profile-skills").value.split(",").map((skill) => skill.trim()).filter(Boolean),
@@ -47,12 +64,15 @@ function profilePayload() {
     projects: parseJsonField("profile-projects"),
     education: parseJsonField("profile-education"),
     resume_text: $("profile-resume").value.trim() || null,
-    resume_file_path: null,
+    resume_file_path: state.profile?.resume_file_path || null,
   };
 }
 
 function fillProfile(profile) {
   $("profile-name").value = profile.name || "";
+  $("profile-email").value = profile.email || "";
+  $("profile-phone").value = profile.phone || "";
+  $("profile-location").value = profile.location || "";
   $("profile-headline").value = profile.headline || "";
   $("profile-summary").value = profile.summary || "";
   $("profile-skills").value = (profile.skills || []).join(", ");
@@ -60,69 +80,29 @@ function fillProfile(profile) {
   $("profile-projects").value = JSON.stringify(profile.projects || [], null, 2);
   $("profile-education").value = JSON.stringify(profile.education || [], null, 2);
   $("profile-resume").value = profile.resume_text || "";
+  $("resume-status").textContent = profile.resume_file_path
+    ? `Resume saved: ${profile.resume_file_path.split(/[\\/]/).pop()}`
+    : "No resume uploaded yet.";
 }
 
-function renderPills(id, skills, kind) {
-  const container = $(id);
-  container.innerHTML = "";
-  if (!skills || skills.length === 0) {
-    container.textContent = "None";
-    return;
+async function loadMe() {
+  try {
+    state.me = await api("/me");
+    $("account-status").textContent = `Logged in as ${state.me.email}`;
+    $("login-screen").classList.add("hidden");
+    $("workspace").classList.remove("hidden");
+  } catch {
+    state.me = null;
+    $("login-screen").classList.remove("hidden");
+    $("workspace").classList.add("hidden");
   }
-  skills.forEach((skill) => {
-    const span = document.createElement("span");
-    span.className = `pill ${kind}`;
-    span.textContent = skill;
-    container.appendChild(span);
-  });
-}
-
-function addHistory(applicationId) {
-  const ids = JSON.parse(localStorage.getItem("emailAgentApplicationIds") || "[]");
-  if (!ids.includes(applicationId)) {
-    ids.unshift(applicationId);
-    localStorage.setItem("emailAgentApplicationIds", JSON.stringify(ids.slice(0, 25)));
-  }
-}
-
-async function renderHistory() {
-  const ids = JSON.parse(localStorage.getItem("emailAgentApplicationIds") || "[]");
-  const list = $("history-list");
-  list.innerHTML = "";
-  if (ids.length === 0) {
-    list.textContent = "No applications created from this browser yet.";
-    return;
-  }
-
-  for (const id of ids) {
-    const row = document.createElement("div");
-    row.className = "history-item";
-    try {
-      const app = await api(`/applications/${id}`);
-      row.innerHTML = `<span>Application #${app.id} - ${app.status}</span>`;
-      const button = document.createElement("button");
-      button.textContent = "View Send Log";
-      button.addEventListener("click", () => loadSendLog(app.id));
-      row.appendChild(button);
-    } catch {
-      row.textContent = `Application #${id} - unavailable`;
-    }
-    list.appendChild(row);
-  }
-}
-
-async function loadSendLog(applicationId) {
-  const logs = await api(`/applications/${applicationId}/send-log`);
-  $("history-log").textContent = JSON.stringify(logs, null, 2);
 }
 
 async function loadProfile() {
   try {
-    const profile = await api("/candidate-profile/me");
-    state.profile = profile;
-    fillProfile(profile);
-    showMessage("Loaded profile", profile);
-  } catch (error) {
+    state.profile = await api("/candidate-profile/me");
+    fillProfile(state.profile);
+  } catch {
     $("profile-experience").value = "[]";
     $("profile-projects").value = "[]";
     $("profile-education").value = "[]";
@@ -132,144 +112,183 @@ async function loadProfile() {
 async function saveProfile(event) {
   event.preventDefault();
   try {
-    const payload = profilePayload();
     const method = state.profile ? "PUT" : "POST";
     const path = state.profile ? "/candidate-profile/me" : "/candidate-profile";
-    const profile = await api(path, { method, body: JSON.stringify(payload) });
-    state.profile = profile;
-    fillProfile(profile);
-    showMessage("Saved profile", profile);
+    state.profile = await api(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profilePayload()),
+    });
+    fillProfile(state.profile);
+    addMessage("Profile saved.", "success");
   } catch (error) {
     if (error instanceof Error) {
-      showMessage("Profile form error", { detail: error.message }, "error");
+      addMessage(error.message, "error");
     }
   }
 }
 
-async function createAndAnalyze(event) {
+async function uploadResume(event) {
   event.preventDefault();
-  if (!state.profile) {
-    showMessage("Profile required", { detail: "Save a candidate profile before creating an application." }, "error");
-    return;
-  }
-
-  const job = await api("/job-posts", {
-    method: "POST",
-    body: JSON.stringify({ raw_text: $("job-text").value, source_type: "text" }),
-  });
-  const application = await api("/applications", {
-    method: "POST",
-    body: JSON.stringify({ candidate_profile_id: state.profile.id, job_post_id: job.id }),
-  });
-  const analyzed = await api(`/applications/${application.id}/analyze`, { method: "POST" });
-  const hydratedJob = await api(`/job-posts/${job.id}`);
-
-  state.job = hydratedJob;
-  state.application = analyzed;
-  state.draft = null;
-  state.sent = false;
-  addHistory(analyzed.id);
-
-  const extracted = hydratedJob.extracted || {};
-  $("job-company").value = hydratedJob.company || extracted.company || "";
-  $("job-role").value = hydratedJob.role_title || extracted.role_title || "";
-  $("job-recipient").value = hydratedJob.recipient_email || extracted.recipient_email || "";
-  $("job-skills").value = (extracted.required_skills || []).join(", ");
-  renderPills("matched-skills", analyzed.match_result?.matched_skills || [], "match");
-  renderPills("gap-skills", analyzed.match_result?.gap_skills || [], "gap");
-  $("analysis-panel").classList.remove("hidden");
-  $("generate-draft").disabled = false;
-  $("confirm-zero-overlap").classList.add("hidden");
-  $("zero-warning").classList.add("hidden");
-  $("draft-panel").classList.add("hidden");
-  $("approve-draft").disabled = true;
-  $("send-draft").disabled = true;
-
-  await renderHistory();
-  showMessage("Analyzed application", analyzed);
+  const file = $("resume-file").files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append("file", file);
+  state.profile = await api("/profile/resume", { method: "POST", body: form });
+  fillProfile(state.profile);
+  addMessage(`Resume uploaded: ${file.name}`, "success");
 }
 
 function renderDraft(draft) {
+  if (!draft || draft.status === "blocked_zero_skill_overlap") {
+    return;
+  }
   state.draft = draft;
+  $("draft-panel").classList.remove("hidden");
   $("draft-recipient").value = draft.recipient_email || "";
+  $("draft-cc").value = (draft.cc || []).join(", ");
+  $("draft-bcc").value = (draft.bcc || []).join(", ");
   $("draft-subject").value = draft.subject || "";
   $("draft-body").value = draft.body || "";
   $("claim-evidence").textContent = JSON.stringify(draft.claim_evidence_map || {}, null, 2);
-  $("draft-panel").classList.remove("hidden");
-  $("approve-draft").disabled = Boolean(draft.approved_at);
-  $("send-draft").disabled = !draft.approved_at || state.sent;
-  $("save-draft-edits").disabled = Boolean(draft.approved_at);
-  $("draft-recipient").disabled = Boolean(draft.approved_at);
-  $("draft-subject").disabled = Boolean(draft.approved_at);
-  $("draft-body").disabled = Boolean(draft.approved_at);
+  $("draft-attachments").textContent = (draft.attachments || []).length
+    ? `Attachments: ${(draft.attachments || []).map((item) => item.filename).join(", ")}`
+    : "Attachments: none";
+
+  const approved = Boolean(draft.approved_at);
+  $("draft-state").textContent = approved ? "Approved and frozen" : "Editable";
+  ["draft-recipient", "draft-cc", "draft-bcc", "draft-subject", "draft-body"].forEach((id) => {
+    $(id).disabled = approved;
+  });
+  $("save-draft").disabled = approved;
+  $("approve-draft").disabled = approved;
+  $("send-draft").disabled = !approved;
 }
 
-async function generateDraft(confirmZeroOverlap = false) {
-  if (!state.application) return;
-  const suffix = confirmZeroOverlap ? "?confirm_zero_overlap=true" : "";
-  const result = await api(`/applications/${state.application.id}/draft-email${suffix}`, { method: "POST" });
-
-  if (result.status === "blocked_zero_skill_overlap") {
-    $("zero-warning").textContent = `${result.message}\nGaps: ${(result.gap_skills || []).join(", ")}`;
-    $("zero-warning").classList.remove("hidden");
-    $("confirm-zero-overlap").classList.remove("hidden");
-    showMessage("Zero-overlap warning", result);
+async function sendChat(confirmZeroOverlap = false) {
+  if (!state.profile) {
+    addMessage("Save your profile first.", "error");
+    return;
+  }
+  const text = $("chat-input").value.trim();
+  const files = Array.from($("chat-files").files);
+  if (!text && files.length === 0) {
+    addMessage("Type a JD or attach a file.", "error");
     return;
   }
 
-  $("zero-warning").classList.add("hidden");
-  $("confirm-zero-overlap").classList.add("hidden");
-  renderDraft(result);
-  showMessage("Generated draft", result);
+  addMessage(text || `Attached ${files.length} file(s)`, "user");
+  const form = new FormData();
+  form.append("message", text);
+  form.append("confirm_zero_overlap", confirmZeroOverlap ? "true" : "false");
+  if (state.draft && text) {
+    form.append("draft_id", state.draft.id);
+  }
+  files.forEach((file) => form.append("files", file));
+
+  const result = await api("/chat/messages", { method: "POST", body: form });
+  if (result.application) {
+    state.application = result.application;
+  }
+  if (result.draft?.status === "blocked_zero_skill_overlap") {
+    state.zeroOverlapPending = true;
+    $("confirm-zero-overlap").classList.remove("hidden");
+    addMessage(result.draft.message, "error", result.draft);
+  } else {
+    state.zeroOverlapPending = false;
+    $("confirm-zero-overlap").classList.add("hidden");
+    renderDraft(result.draft);
+    addMessage(`${result.message}${result.model_used ? ` Model: ${result.model_used}` : ""}`, "app");
+  }
+  $("chat-input").value = "";
+  $("chat-files").value = "";
+  await renderHistory();
 }
 
-async function saveDraftEdits() {
+async function saveDraft() {
   if (!state.draft) return;
-  const payload = {
-    recipient_email: $("draft-recipient").value.trim() || null,
-    subject: $("draft-subject").value.trim(),
-    body: $("draft-body").value,
-  };
-  const draft = await api(`/email-drafts/${state.draft.id}`, {
+  state.draft = await api(`/email-drafts/${state.draft.id}`, {
     method: "PUT",
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      recipient_email: $("draft-recipient").value.trim() || null,
+      cc: splitEmails($("draft-cc").value),
+      bcc: splitEmails($("draft-bcc").value),
+      subject: $("draft-subject").value.trim(),
+      body: $("draft-body").value,
+    }),
   });
-  renderDraft(draft);
-  showMessage("Saved draft edits", draft);
+  renderDraft(state.draft);
+  addMessage("Draft saved.", "success");
 }
 
 async function approveDraft() {
   if (!state.draft) return;
-  const draft = await api(`/email-drafts/${state.draft.id}/approve`, { method: "POST" });
-  renderDraft(draft);
-  $("send-result").className = "success";
-  $("send-result").textContent = "Draft approved and locked. Editing is disabled.";
-  showMessage("Approved draft", draft);
-  await renderHistory();
+  await saveDraft();
+  state.draft = await api(`/email-drafts/${state.draft.id}/approve`, { method: "POST" });
+  renderDraft(state.draft);
+  addMessage("Draft approved and frozen.", "success");
 }
 
 async function sendDraft() {
   if (!state.draft) return;
   const result = await api(`/email-drafts/${state.draft.id}/send`, { method: "POST" });
-  state.sent = true;
   $("send-draft").disabled = true;
-  $("send-result").className = "success";
-  $("send-result").textContent = `Mock send succeeded. Provider message id: ${result.provider_message_id}`;
-  showMessage("Send result", result);
-  await loadSendLog(state.draft.application_id);
+  addMessage(`Email sent with Gmail. Message id: ${result.provider_message_id}`, "success", result);
   await renderHistory();
 }
 
+async function renderHistory() {
+  try {
+    const applications = await api("/applications");
+    const list = $("history-list");
+    list.innerHTML = "";
+    if (!applications.length) {
+      list.textContent = "No applications yet.";
+      return;
+    }
+    applications.slice(0, 10).forEach((application) => {
+      const item = document.createElement("div");
+      item.className = "history-item";
+      item.textContent = `#${application.id} - ${application.status}`;
+      item.addEventListener("click", async () => {
+        const logs = await api(`/applications/${application.id}/send-log`);
+        addMessage(`Send log for application #${application.id}`, "app", logs);
+      });
+      list.appendChild(item);
+    });
+  } catch {
+    $("history-list").textContent = "History unavailable.";
+  }
+}
+
 function bindEvents() {
+  $("theme-toggle").addEventListener("click", () => {
+    document.body.classList.toggle("light");
+    $("theme-toggle").textContent = document.body.classList.contains("light") ? "Dark" : "Light";
+  });
+  $("logout").addEventListener("click", async () => {
+    await fetch("/auth/logout", { method: "POST" });
+    window.location.href = "/";
+  });
   $("profile-form").addEventListener("submit", saveProfile);
-  $("application-form").addEventListener("submit", createAndAnalyze);
-  $("generate-draft").addEventListener("click", () => generateDraft(false));
-  $("confirm-zero-overlap").addEventListener("click", () => generateDraft(true));
-  $("save-draft-edits").addEventListener("click", saveDraftEdits);
+  $("resume-form").addEventListener("submit", uploadResume);
+  $("chat-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await sendChat(false);
+  });
+  $("confirm-zero-overlap").addEventListener("click", async () => {
+    await sendChat(true);
+  });
+  $("save-draft").addEventListener("click", saveDraft);
   $("approve-draft").addEventListener("click", approveDraft);
   $("send-draft").addEventListener("click", sendDraft);
 }
 
 bindEvents();
-loadProfile();
-renderHistory();
+loadMe().then(() => {
+  if (state.me) {
+    loadProfile();
+    renderHistory();
+  }
+});

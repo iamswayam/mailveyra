@@ -6,6 +6,9 @@ from pydantic import BaseModel, EmailStr, Field
 
 class CandidateProfileIn(BaseModel):
     name: str
+    email: EmailStr | None = None
+    phone: str | None = None
+    location: str | None = None
     headline: str | None = None
     summary: str | None = None
     skills: list[str] = Field(default_factory=list)
@@ -70,9 +73,12 @@ class ApplicationOut(BaseModel):
 
 class EmailDraftStructured(BaseModel):
     recipient_email: EmailStr | None = None
+    cc: list[EmailStr] = Field(default_factory=list)
+    bcc: list[EmailStr] = Field(default_factory=list)
     subject: str
     body: str
     claim_evidence_map: dict[str, str] = Field(default_factory=dict)
+    model_used: str | None = None
 
 
 class DraftWarning(BaseModel):
@@ -86,9 +92,13 @@ class EmailDraftOut(BaseModel):
     id: int
     application_id: int
     recipient_email: str | None
+    cc: list[str] = Field(default_factory=list)
+    bcc: list[str] = Field(default_factory=list)
     subject: str
     body: str
+    attachments: list[dict[str, Any]] = Field(default_factory=list)
     claim_evidence_map: dict[str, Any]
+    model_used: str | None = None
     user_edited_body: str | None
     approved_snapshot: dict[str, Any] | None
     approved_at: datetime | None
@@ -98,8 +108,32 @@ class EmailDraftOut(BaseModel):
 
 class EmailDraftUpdate(BaseModel):
     recipient_email: EmailStr | None = None
+    cc: list[EmailStr] | None = None
+    bcc: list[EmailStr] | None = None
     subject: str | None = None
     body: str | None = None
+
+
+class JobPostUpdate(BaseModel):
+    company: str | None = None
+    role_title: str | None = None
+    recipient_email: EmailStr | None = None
+    required_skills: list[str] | None = None
+
+
+class CurrentUserOut(BaseModel):
+    id: int
+    email: str
+    name: str
+    gmail_connected: bool
+
+
+class ChatMessageOut(BaseModel):
+    message: str
+    application: ApplicationOut | None = None
+    job: JobPostOut | None = None
+    draft: EmailDraftOut | DraftWarning | None = None
+    model_used: str | None = None
 
 
 class SendLogOut(BaseModel):

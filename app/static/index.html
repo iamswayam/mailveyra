@@ -7,101 +7,129 @@
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
-    <main>
-      <header>
+    <section id="login-screen" class="login-screen">
+      <div class="login-card">
+        <div class="brand-mark">MV</div>
         <h1>MailVeyra</h1>
-        <p>Text JD -> binary match -> draft -> approve -> mock send</p>
+        <p>Generate truthful job application emails and send them from your Gmail after approval.</p>
+        <a class="primary-button wide" href="/auth/google/login">Continue with Gmail</a>
+        <p class="small-text">You must sign in before using profile, chat, draft, or send features.</p>
+      </div>
+    </section>
+
+    <main id="workspace" class="workspace hidden">
+      <header class="topbar">
+        <div>
+          <div class="logo-line">
+            <span class="brand-dot">MV</span>
+            <strong>MailVeyra</strong>
+          </div>
+          <p id="account-status">Checking login...</p>
+        </div>
+        <div class="top-actions">
+          <button id="theme-toggle" type="button">Light</button>
+          <button id="logout" type="button">Logout</button>
+        </div>
       </header>
 
-      <section>
-        <h2>1. Candidate Profile</h2>
-        <form id="profile-form">
-          <div class="grid">
-            <label>Name <input id="profile-name" required></label>
-            <label>Headline <input id="profile-headline"></label>
-          </div>
-          <p class="notice">The current backend schema does not store candidate email, phone, or location, so this UI sends only the fields the API accepts.</p>
-          <label>Summary <textarea id="profile-summary" rows="3"></textarea></label>
-          <label>Skills, comma-separated <input id="profile-skills" placeholder="python, django, fastapi"></label>
-          <label>Experience JSON <textarea id="profile-experience" rows="4">[]</textarea></label>
-          <label>Projects JSON <textarea id="profile-projects" rows="4">[]</textarea></label>
-          <label>Education JSON <textarea id="profile-education" rows="3">[]</textarea></label>
-          <label>Resume text <textarea id="profile-resume" rows="4"></textarea></label>
-          <button type="submit">Save Profile</button>
-        </form>
-      </section>
-
-      <section>
-        <h2>2. New Application</h2>
-        <form id="application-form">
-          <label>Job description <textarea id="job-text" rows="8" required></textarea></label>
-          <button type="submit">Create + Analyze</button>
-        </form>
-
-        <div id="analysis-panel" class="hidden">
-          <h3>Extracted Job</h3>
-          <p class="notice">The backend has no job-post update endpoint yet. These extracted fields are shown from the API response and cannot be saved before drafting in this phase.</p>
-          <div class="grid">
-            <label>Company <input id="job-company" disabled></label>
-            <label>Role title <input id="job-role" disabled></label>
-            <label>Recipient email <input id="job-recipient" disabled></label>
-          </div>
-          <label>Required skills <input id="job-skills" disabled></label>
-          <div class="match-grid">
-            <div>
-              <h4>Matched skills</h4>
-              <div id="matched-skills" class="pill-box"></div>
+      <section class="layout">
+        <aside class="left-rail">
+          <section class="card">
+            <div class="section-title">
+              <h2>Profile</h2>
+              <span>saved once, editable anytime</span>
             </div>
-            <div>
-              <h4>Gap skills</h4>
-              <div id="gap-skills" class="pill-box"></div>
+            <form id="profile-form">
+              <div class="two-col">
+                <label>Name* <input id="profile-name" required></label>
+                <label>Email <input id="profile-email" type="email"></label>
+                <label>Phone <input id="profile-phone"></label>
+                <label>Location <input id="profile-location"></label>
+              </div>
+              <label>Headline <input id="profile-headline"></label>
+              <label>Summary <textarea id="profile-summary" rows="3"></textarea></label>
+              <label>Skills <input id="profile-skills" placeholder="python, django, fastapi, aws"></label>
+              <details>
+                <summary>Experience / projects / education JSON</summary>
+                <label>Experience <textarea id="profile-experience" rows="4">[]</textarea></label>
+                <label>Projects <textarea id="profile-projects" rows="4">[]</textarea></label>
+                <label>Education <textarea id="profile-education" rows="3">[]</textarea></label>
+              </details>
+              <label>Resume text <textarea id="profile-resume" rows="4"></textarea></label>
+              <button class="primary-button" type="submit">Save Profile</button>
+            </form>
+          </section>
+
+          <section class="card">
+            <div class="section-title">
+              <h2>Resume</h2>
+              <span>attached to approved email</span>
             </div>
-          </div>
-        </div>
-      </section>
+            <form id="resume-form">
+              <input id="resume-file" type="file" accept=".pdf,.txt,.md">
+              <button type="submit">Upload Resume</button>
+            </form>
+            <div id="resume-status" class="helper-text">No resume uploaded yet.</div>
+          </section>
 
-      <section>
-        <h2>3. Draft</h2>
-        <div class="actions">
-          <button id="generate-draft" disabled>Generate Draft</button>
-          <button id="confirm-zero-overlap" class="danger hidden">Generate Anyway</button>
-        </div>
-        <div id="zero-warning" class="warning hidden"></div>
+          <section class="card">
+            <div class="section-title">
+              <h2>History</h2>
+              <span>recent applications</span>
+            </div>
+            <div id="history-list" class="history-list"></div>
+          </section>
+        </aside>
 
-        <div id="draft-panel" class="hidden">
-          <div class="grid">
-            <label>Recipient <input id="draft-recipient"></label>
-            <label>Subject <input id="draft-subject"></label>
-          </div>
-          <label>Body <textarea id="draft-body" rows="10"></textarea></label>
-          <button id="save-draft-edits">Save Draft Edits</button>
-          <h3>Claim Evidence Map</h3>
-          <pre id="claim-evidence"></pre>
-        </div>
-      </section>
+        <section class="center-pane">
+          <div id="messages" class="messages"></div>
+          <form id="chat-form" class="composer">
+            <textarea id="chat-input" rows="3" placeholder="Paste a job description, or ask: make the draft shorter / more confident / add Django experience."></textarea>
+            <div class="composer-footer">
+              <input id="chat-files" type="file" multiple accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.webp">
+              <div class="composer-actions">
+                <button id="confirm-zero-overlap" class="danger-button hidden" type="button">Generate Anyway</button>
+                <button class="primary-button" id="chat-submit" type="submit">Send</button>
+              </div>
+            </div>
+          </form>
+        </section>
 
-      <section>
-        <h2>4. Approval and Send</h2>
-        <div class="actions">
-          <button id="approve-draft" disabled>Approve</button>
-          <button id="send-draft" disabled>Send</button>
-        </div>
-        <div id="send-result"></div>
-      </section>
-
-      <section>
-        <h2>5. History</h2>
-        <p class="notice">History is browser-local because the current API exposes individual applications, not a list endpoint.</p>
-        <div id="history-list"></div>
-        <h3>Selected Send Log</h3>
-        <pre id="history-log">Select an application.</pre>
-      </section>
-
-      <section>
-        <h2>API Messages</h2>
-        <pre id="messages"></pre>
+        <aside class="right-rail">
+          <section id="draft-panel" class="gmail-draft">
+            <div class="draft-titlebar">
+              <span>New Message</span>
+              <span id="draft-state">No draft</span>
+            </div>
+            <div class="draft-row">
+              <span>To</span>
+              <input id="draft-recipient" type="email" placeholder="recipient@example.com">
+            </div>
+            <div class="draft-row">
+              <span>Cc</span>
+              <input id="draft-cc" placeholder="optional, comma separated">
+            </div>
+            <div class="draft-row">
+              <span>Bcc</span>
+              <input id="draft-bcc" placeholder="optional, comma separated">
+            </div>
+            <input id="draft-subject" class="subject-input" placeholder="Subject">
+            <textarea id="draft-body" class="body-input" rows="14" placeholder="Generated email draft appears here."></textarea>
+            <div id="draft-attachments" class="attachment-line">Attachments: none</div>
+            <details class="evidence-block">
+              <summary>Claim evidence</summary>
+              <pre id="claim-evidence">{}</pre>
+            </details>
+            <div class="draft-actions">
+              <button id="save-draft" type="button" disabled>Save</button>
+              <button id="approve-draft" type="button" disabled>Approve</button>
+              <button id="send-draft" class="primary-button" type="button" disabled>Send</button>
+            </div>
+          </section>
+        </aside>
       </section>
     </main>
+
     <script src="/static/app.js"></script>
   </body>
 </html>

@@ -1,9 +1,11 @@
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.main import app
 
 
-def test_zero_skill_overlap_blocks_draft_generation():
+def test_zero_skill_overlap_blocks_draft_generation(monkeypatch):
+    monkeypatch.setattr(settings, "gemini_api_key", None)
     with TestClient(app) as client:
         profile = client.post(
             "/candidate-profile",
@@ -28,7 +30,8 @@ def test_zero_skill_overlap_blocks_draft_generation():
         assert client.get(f"/applications/{application['id']}/email-draft").status_code == 404
 
 
-def test_approve_then_mock_send_blocks_duplicate_send():
+def test_approve_then_send_requires_gmail_login(monkeypatch):
+    monkeypatch.setattr(settings, "gemini_api_key", None)
     with TestClient(app) as client:
         profile = client.post(
             "/candidate-profile",
@@ -54,9 +57,6 @@ def test_approve_then_mock_send_blocks_duplicate_send():
         assert approved["approved_snapshot"]["recipient_email"] == "jobs@example.com"
 
         sent = client.post(f"/email-drafts/{draft['id']}/send")
-        assert sent.status_code == 200
-        assert sent.json()["status"] == "sent"
-
-        duplicate = client.post(f"/email-drafts/{draft['id']}/send")
-        assert duplicate.status_code == 409
+        assert sent.status_code == 401
+        assert sent.json()["detail"] == "Login with Gmail before sending real email"
 

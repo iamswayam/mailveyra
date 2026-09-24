@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +21,9 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
+    google_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    google_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    google_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     candidate_profiles: Mapped[list["CandidateProfile"]] = relationship(back_populates="user")
@@ -24,6 +35,9 @@ class CandidateProfile(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     headline: Mapped[str | None] = mapped_column(String(255), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     skills: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -71,9 +85,13 @@ class EmailDraft(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     recipient_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cc: Mapped[list[str]] = mapped_column(JSON, default=list)
+    bcc: Mapped[list[str]] = mapped_column(JSON, default=list)
     subject: Mapped[str] = mapped_column(String(500))
     body: Mapped[str] = mapped_column(Text)
+    attachments: Mapped[list[dict]] = mapped_column(JSON, default=list)
     claim_evidence_map: Mapped[dict] = mapped_column(JSON, default=dict)
+    model_used: Mapped[str | None] = mapped_column(String(100), nullable=True)
     user_edited_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     approved_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
